@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meshy → GLB 변환기</title>
+<style>
+:root{color-scheme:dark;--bg:#0b101a;--card:#151e2e;--sub:#1b2639;--stroke:#303e53;--text:#e7eef9;--muted:#a5b3c8;--accent:#69c4ff;--green:#78ddaa;--red:#ff9ca4}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -15%,#213e55 0%,#0b101a 50%);font:15px/1.65 system-ui,-apple-system,'Malgun Gothic',sans-serif;color:var(--text);min-height:100vh}
+main{width:min(920px,calc(100% - 28px));margin:36px auto 54px}.brand{display:inline-flex;gap:9px;align-items:center;color:#a9d9fa;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;font-weight:750}
+.spark{display:inline-block;width:11px;height:11px;background:#72c7fb;transform:rotate(45deg);border-radius:2px;box-shadow:0 0 16px #72c7fb66}
+h1{font-size:clamp(26px,5vw,42px);margin:9px 0 7px;letter-spacing:-1.5px;line-height:1.25}p{margin:0;color:var(--muted)}.lead{margin-bottom:24px}.panel{border:1px solid var(--stroke);background:var(--card);border-radius:18px;padding:22px;margin-top:15px;box-shadow:0 15px 40px #0002}
+#drop{border:2px dashed #50627b;border-radius:15px;min-height:183px;padding:27px 15px;display:flex;gap:8px;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;text-align:center;transition:.15s;background:#18253a77}
+#drop:hover,#drop.active{border-color:var(--accent);background:#25456377}#drop svg{width:38px;height:38px;stroke:var(--accent);fill:none;stroke-width:1.7}#drop strong{font-size:18px}#drop small{color:var(--muted)}
+button{border:1px solid #657a96;background:#243348;color:var(--text);border-radius:10px;font:inherit;cursor:pointer;padding:10px 16px;font-weight:650;transition:.15s;white-space:nowrap}button:hover:not(:disabled){filter:brightness(1.25)}button:disabled{opacity:.43;cursor:default}.primary{border-color:#74cfff;background:linear-gradient(135deg,#45a9ef,#297fce);color:#031421}.buttons{margin-top:18px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}#count{margin-left:auto;font-size:12px;color:var(--muted)}
+.title{font-weight:750;font-size:17px;margin:0 0 10px}.empty{padding:28px 0;text-align:center;color:var(--muted)}.items{display:flex;flex-direction:column;gap:9px}.item{border:1px solid #33445d;border-radius:12px;background:#1a2739;padding:13px 15px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}.itemBody{flex:1;min-width:180px}.filename{font-weight:700;overflow-wrap:anywhere}.meta{font-size:12px;color:var(--muted)}.status{font-size:12px;color:#a4d4ff}.status.ok{color:var(--green)}.status.error{color:var(--red)}.itemActions{display:flex;gap:7px;align-items:center} .small{padding:7px 11px;font-size:12px}.remove{border-color:#5b5060;color:#e2acb1}#log{background:#0e1724;border:1px solid #2f3c51;padding:13px 14px;max-height:175px;min-height:76px;border-radius:11px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 ui-monospace,Consolas,monospace;color:#bdd0e7}.note{font-size:12px;line-height:1.8;color:var(--muted)}.note strong{color:#cad9ef}.footer{font-size:12px;color:#8394ac;margin-top:19px}.footer a{color:#8dccff}.pill{display:inline-block;border:1px solid #356357;background:#1a3b32;border-radius:99px;color:#a7eccd;font-size:11px;padding:2px 10px;margin-left:7px;vertical-align:3px}
+@media(max-width:620px){main{margin:22px auto}.panel{padding:14px}.item{align-items:stretch}.itemActions{width:100%}.itemActions button{flex:1}.buttons button{flex:1}#count{width:100%;text-align:right}}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><span class="spark"></span> Local 3D Converter</div>
+  <h1>Meshy <span style="color:#79ceff">→</span> GLB 변환기</h1>
+  <p class="lead">Meshy의 <code>.meshy</code> 파일을 복호화하고 3D 메시 압축까지 풀어 표준 <code>.glb</code> 파일로 저장합니다. <span class="pill">파일 업로드 없음</span></p>
+  <section class="panel">
+    <div id="drop" role="button" tabindex="0" aria-label="Meshy 파일 선택 또는 끌어다 놓기">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 33v7h28v-7M24 33V7m0 0L13 18M24 7l11 11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <strong>여기에 .meshy 파일을 끌어다 놓기</strong>
+      <small>여러 개를 한꺼번에 선택할 수 있습니다 · GLB 파일도 지원</small>
+      <button id="choose" type="button">파일 선택</button>
+    </div>
+    <input type="file" id="files" accept=".meshy,.glb,application/octet-stream" multiple hidden>
+    <div class="buttons"><button type="button" id="convert" class="primary" disabled>선택한 파일 모두 변환</button><button type="button" id="clear" disabled>목록 비우기</button><span id="count">파일 없음</span></div>
+  </section>
+  <section class="panel">
+    <h2 class="title">변환 결과</h2>
+    <div id="items" class="items"><div class="empty">파일을 추가하면 이곳에 표시됩니다.</div></div>
+  </section>
+  <section class="panel">
+    <h2 class="title">작업 로그</h2>
+    <div id="log" aria-live="polite">파일을 선택하세요. 파일 데이터는 이 브라우저 안에서만 처리합니다.</div>
+  </section>
+  <div class="panel note">
+    <strong>변환 방식</strong> · Meshy .meshy v1 (MESHY.AI 헤더)의 AES-CTR 포장을 해제하고, GLB 내부의 <code>EXT_meshopt_compression</code> 데이터를 복원합니다. 원래 GLB의 WebP 텍스처, UV, 재질, 애니메이션 데이터는 가능한 한 유지합니다.<br>
+    <strong>인터넷</strong> · 첫 실행 시 공개 Meshoptimizer 디코더(JS/WASM)를 CDN에서 불러옵니다. 모델 파일 자체는 어디에도 전송하지 않습니다.<br>
+    <strong>호환성</strong> · 확인된 Meshy v1 파일만 지원합니다. Meshy에서 형식을 바꾸면 변환이 실패할 수 있습니다. 보호된 소스 모델은 사용 권한이 있는 경우에만 변환하세요.
+  </div>
+  <p class="footer">역분석 방식 참고: <a href="https://github.com/Amal-David/meshy2glb" target="_blank" rel="noopener">Amal-David/meshy2glb</a> (MIT) · 메시 압축 해제: <a href="https://github.com/zeux/meshoptimizer" target="_blank" rel="noopener">meshoptimizer</a> (MIT)</p>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const queue=[];let running=false,decoderPromise;
+const MAX_BYTES=256*1024*1024;
+const align4=n=>(n+3)&~3;
+const formatBytes=n=>n>1048576?(n/1048576).toFixed(2)+' MB':(n/1024).toFixed(1)+' KB';
+function log(message){const l=$('log');const time=new Date().toLocaleTimeString('ko-KR');l.textContent+='\n['+time+'] '+message;l.scrollTop=l.scrollHeight;}
+function status(item,msg,kind=''){item.statusEl.textContent=msg;item.statusEl.className='status '+kind;}
+function state(){const has=queue.length>0;$('convert').disabled=!has||running;$('clear').disabled=!has||running;$('count').textContent=queue.length+'개 파일';}
+function addFiles(files){
+  if(running)return;
+  for(const f of files){if(!/\.(meshy|glb)$/i.test(f.name)){log('건너뜀: '+f.name+' (지원하지 않는 확장자)');continue;}
+    if(f.size>MAX_BYTES){log('크기 초과: '+f.name+' (256MB 제한)');continue;}
+    const i={file:f,blob:null,url:null};queue.push(i);
+    const row=document.createElement('div');row.className='item';
+    const b=document.createElement('div');b.className='itemBody';
+    const name=document.createElement('div');name.className='filename';name.textContent=f.name;
+    const meta=document.createElement('div');meta.className='meta';meta.textContent=formatBytes(f.size)+' · 입력 대기';
+    const s=document.createElement('div');s.className='status';s.textContent='대기 중';
+    b.append(name,meta,s);
+    const acts=document.createElement('div');acts.className='itemActions';
+    const down=document.createElement('button');down.type='button';down.className='small primary';down.textContent='GLB 다운로드';down.disabled=true;
+    down.onclick=()=>{if(!i.blob)return;const a=document.createElement('a');const url=URL.createObjectURL(i.blob);a.href=url;a.download=f.name.replace(/\.(meshy|glb)$/i,'')+'.glb';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60_000);};
+    const rem=document.createElement('button');rem.type='button';rem.className='small remove';rem.textContent='삭제';rem.onclick=()=>{if(running)return;i.blob=null;queue.splice(queue.indexOf(i),1);row.remove();if(queue.length===0)$('items').innerHTML='<div class="empty">파일을 추가하면 이곳에 표시됩니다.</div>';state();};
+    acts.append(down,rem);row.append(b,acts);i.row=row;i.statusEl=s;i.metaEl=meta;i.downEl=down;i.removeEl=rem;
+    if(queue.length===1)$('items').innerHTML='';$('items').append(row);
+  }state();
+}
+const drop=$('drop'),input=$('files');
+$('choose').onclick=e=>{e.stopPropagation();input.click();};drop.onclick=e=>{if(e.target.closest('button'))return;input.click();};drop.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click();}};
+input.onchange=()=>{addFiles(input.files);input.value='';};
+for(const evt of ['dragenter','dragover'])drop.addEventListener(evt,e=>{e.preventDefault();drop.classList.add('active');});
+for(const evt of ['dragleave','drop'])drop.addEventListener(evt,e=>{e.preventDefault();drop.classList.remove('active');});
+drop.addEventListener('drop',e=>{addFiles(e.dataTransfer.files);});
+$('clear').onclick=()=>{if(running)return;queue.length=0;$('items').innerHTML='<div class="empty">파일을 추가하면 이곳에 표시됩니다.</div>';state();log('목록 비움');};
+function isGlb(buf){return buf.byteLength>=4&&new DataView(buf).getUint32(0,true)===0x46546c67;}
+async function unpackMeshy(buf){
+ if(isGlb(buf))return buf;
+ const src=new Uint8Array(buf);if(src.length<8240||new TextDecoder().decode(src.subarray(0,8))!=='MESHY.AI')throw Error('지원하지 않는 입력: MESHY.AI v1 또는 GLB 파일이 아닙니다.');
+ const view=new DataView(buf);if(view.getUint16(8,true)!==1)throw Error('Meshy 버전 1만 지원합니다.');
+ if(!crypto?.subtle)throw Error('브라우저 WebCrypto를 사용할 수 없습니다. Edge/Chrome의 로컬 파일 또는 localhost로 열어주세요.');
+ const counter=new Uint8Array(16);counter.set(src.subarray(10,22));counter[15]=2;
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode('JSON{"accessors":[{"bufferView":'),'AES-CTR',false,['decrypt']);
+ const clear=await crypto.subtle.decrypt({name:'AES-CTR',counter,length:32},key,src.subarray(32,8224));
+ if(!isGlb(clear)||new DataView(clear).getUint32(4,true)!==2)throw Error('복호화에 실패했습니다. 지원되지 않는 Meshy 포맷일 수 있습니다.');
+ const out=new Uint8Array(src.length-48);out.set(new Uint8Array(clear));out.set(src.subarray(8240),8192);new DataView(out.buffer).setUint32(8,out.length,true);
+ return out.buffer;
+}
+function parseGLB(buf){
+ const bytes=new Uint8Array(buf),d=new DataView(buf);if(bytes.length<20||bytes.length>MAX_BYTES||!isGlb(buf)||d.getUint32(4,true)!==2||d.getUint32(8,true)!==buf.byteLength)throw Error('GLB 헤더 또는 파일 크기가 잘못되었습니다.');
+ let offset=12,json=null,bin=null,chunks=0;
+ while(offset<bytes.length){if(offset+8>bytes.length)throw Error('GLB 청크가 잘렸습니다.');const size=d.getUint32(offset,true),type=d.getUint32(offset+4,true);if(size%4||offset+8+size>bytes.length)throw Error('GLB 청크 크기 또는 정렬 오류');const data=bytes.subarray(offset+8,offset+8+size);
+ if(chunks===0&&type!==0x4e4f534a)throw Error('GLB 첫 청크가 JSON이 아닙니다.');
+ if(type===0x4e4f534a){if(json)throw Error('GLB JSON이 중복입니다.');json=JSON.parse(new TextDecoder().decode(data));}
+ else if(type===0x004e4942){if(bin)throw Error('GLB BIN이 중복입니다.');bin=data;}
+ chunks++;offset+=8+size;}
+ if(!json||json.asset?.version!=='2.0')throw Error('glTF 2.0 파일이 아닙니다.');
+ if(json.buffers?.[0]&&!json.buffers[0].uri&&json.buffers[0].byteLength>(bin?.length||0))throw Error('GLB 바이너리가 부족합니다.');
+ return {json,bin:bin||new Uint8Array()};
+}
+function writeGLB(json,bin){
+ const jb=new TextEncoder().encode(JSON.stringify(json));const jl=align4(jb.length),bl=align4(bin.length),total=20+jl+(bin.length?8+bl:0);
+ if(total>MAX_BYTES)throw Error('변환된 GLB가 256MB를 초과했습니다.');
+ const out=new Uint8Array(total),v=new DataView(out.buffer);v.setUint32(0,0x46546c67,true);v.setUint32(4,2,true);v.setUint32(8,total,true);v.setUint32(12,jl,true);v.setUint32(16,0x4e4f534a,true);out.fill(32,20,20+jl);out.set(jb,20);
+ if(bin.length){const start=20+jl;v.setUint32(start,bl,true);v.setUint32(start+4,0x004e4942,true);out.set(bin,start+8);}
+ return out.buffer;
+}
+function loadScript(url){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=url;s.onload=resolve;s.onerror=()=>{s.remove();reject(Error('라이브러리를 불러올 수 없습니다: '+url));};document.head.append(s);});}
+async function getDecoder(){
+ if(!decoderPromise)decoderPromise=(async()=>{
+   const urls=['https://cdn.jsdelivr.net/npm/meshoptimizer@1.3.0/meshopt_decoder.cjs','https://unpkg.com/meshoptimizer@1.3.0/meshopt_decoder.cjs'];
+   for(const u of urls){try{if(!window.MeshoptDecoder)await loadScript(u);if(window.MeshoptDecoder?.decodeGltfBuffer){await window.MeshoptDecoder.ready;return window.MeshoptDecoder;}}catch(e){log('디코더 CDN 연결 재시도: '+e.message);}}
+   throw Error('Meshoptimizer 디코더 다운로드 실패. 인터넷 연결 또는 광고 차단 설정을 확인하세요.');
+ })();
+ try{return await decoderPromise;}catch(e){decoderPromise=null;throw e;}
+}
+async function decompressGLB(buf,onProgress){
+ const {json,bin}=parseGLB(buf),views=json.bufferViews||[];
+ const compressed=views.filter(v=>v.extensions?.EXT_meshopt_compression).length;
+ if(!compressed)return {buffer:buf,json,decoded:0};
+ const decoder=await getDecoder();if((json.buffers||[]).some(b=>b.uri))throw Error('외부 버퍼를 사용하는 압축 GLB는 지원하지 않습니다.');
+ let total=0;const chunks=[],outViews=[];
+ for(let i=0;i<views.length;i++){
+   const view=views[i],ext=view.extensions?.EXT_meshopt_compression;
+   const size=ext?ext.count*ext.byteStride:view.byteLength;
+   const offset=(ext?ext.byteOffset:view.byteOffset)??0;
+   const length=ext?ext.byteLength:view.byteLength;
+   const sourceBuffer=(ext?ext.buffer:view.buffer)??0;
+   if(sourceBuffer!==0)throw Error('내장 바이너리가 아닌 외부 버퍼가 있습니다.');
+   if(![size,offset,length].every(n=>Number.isSafeInteger(n)&&n>=0)||!size||offset+length>bin.length)throw Error('압축 버퍼 범위 오류: '+i);
+   if(ext&&(!Number.isSafeInteger(ext.count)||ext.count<=0||!Number.isSafeInteger(ext.byteStride)||ext.byteStride<=0||size!==view.byteLength))throw Error('압축 버퍼 크기 검증 실패: '+i);
+   const pos=align4(total);if(pos+size>MAX_BYTES)throw Error('압축 해제 시 256MB를 넘습니다.');
+   const bytes=ext?new Uint8Array(size):bin.subarray(offset,offset+length);
+   if(ext)decoder.decodeGltfBuffer(bytes,ext.count,ext.byteStride,bin.subarray(offset,offset+length),ext.mode,ext.filter||'');
+   const result={...view,buffer:0,byteOffset:pos,byteLength:size};
+   if(result.extensions){result.extensions={...result.extensions};delete result.extensions.EXT_meshopt_compression;if(!Object.keys(result.extensions).length)delete result.extensions;}
+   chunks.push({pos,bytes});outViews.push(result);total=pos+size;
+   if(i%3===0)onProgress?.(i+1,views.length);
+ }
+ const binary=new Uint8Array(total);for(const c of chunks)binary.set(c.bytes,c.pos);
+ const out={...json,buffers:[{byteLength:total}],bufferViews:outViews};for(const k of ['extensionsUsed','extensionsRequired']){const x=(out[k]||[]).filter(e=>e!=='EXT_meshopt_compression');if(x.length)out[k]=x;else delete out[k];}
+ const result=writeGLB(out,binary);parseGLB(result);return {buffer:result,json:out,decoded:compressed};
+}
+async function convertFile(item){
+ const f=item.file;item.blob=null;item.downEl.disabled=true;
+ try{
+  status(item,'파일 읽는 중…');const raw=await f.arrayBuffer();
+  status(item,'Meshy 데이터 복호화…');let glb=await unpackMeshy(raw);
+  status(item,'GLB 구조 검증…');parseGLB(glb);
+  status(item,'메시 압축 해제…');const result=await decompressGLB(glb,(n,total)=>status(item,'버퍼 복원 '+n+'/'+total));
+  item.blob=new Blob([result.buffer],{type:'model/gltf-binary'});item.downEl.disabled=false;
+  const count=(result.json.images||[]).length,meshes=(result.json.meshes||[]).length;
+  item.metaEl.textContent=formatBytes(f.size)+' → '+formatBytes(result.buffer.byteLength)+' · 메시 '+meshes+'개 · 텍스처 '+count+'개 · 해제 '+result.decoded+'개';
+  status(item,'변환 성공 · GLB 다운로드 가능','ok');log('완료: '+f.name+' → '+formatBytes(result.buffer.byteLength)+' GLB (텍스처 '+count+'개)');
+ }catch(e){status(item,'실패: '+(e?.message||e),'error');log('실패: '+f.name+' · '+(e?.message||e));}
+}
+$('convert').onclick=async()=>{if(running)return;running=true;state();$('log').textContent='변환 시작';try{for(const item of queue){item.removeEl.disabled=true;await convertFile(item);}}finally{running=false;for(const item of queue)item.removeEl.disabled=false;state();log('변환 작업 종료');}};
+</script>
+</body>
+</html>
